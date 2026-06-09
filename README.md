@@ -31,4 +31,4 @@ The system operates based on a 4-state FSM triggered by external hardware interr
 4.  **Main:** Contains the primary FSM polling loop, evaluating the `state` variable and routing execution to the corresponding operational logic.
 
 ## Author
-Hamza El-hoot
+hamzahoot2
