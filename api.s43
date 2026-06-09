@@ -1,0 +1,56 @@
+#include "bsp.h"
+
+           MODULE API
+           PUBLIC print_str, print_ch, delay, lcd_clr
+           EXTERN lcd_col, lcd_row, lcd_trig 
+           
+           RSEG   CODE
+
+lcd_clr:   push   #0x01                        
+           call   #lcd_cmd
+           mov.b  #0x00, lcd_row               
+           mov.b  #0x00, lcd_col               
+           ret
+
+print_str: pop    R12					
+           pop    R13					
+loop:      mov.b  @R13+, R14
+           cmp    #0x00, R14
+           jz     exit_str					
+           push   R14
+           call   #print_ch
+           jmp    loop
+exit_str:  push.w R12
+           ret
+
+print_ch:  pop    R12					
+           pop    R13					
+           bis.b  #RSctrl, PB_OUT                      
+           push   #del5ms
+           call   #delay
+           mov.b  R13, LCD_OUT
+           call   #lcd_trig         
+           inc.b  lcd_col               
+           push.w R12
+           ret
+
+lcd_cmd:   pop    R10					
+           pop    R11                                  
+           bic.b  #RSctrl, PB_OUT                      
+           push   #del5ms
+           call   #delay
+           mov.b  R11, LCD_OUT
+           call   #lcd_trig
+           push.w R10
+           ret         
+
+; CPU-based software delay (Resolves Timer_A0 collision)
+delay:     pop    R12                  ; Return address
+           pop    R15                  ; Delay cycles
+delay_L:   dec    R15
+           jnz    delay_L
+           push.w R12                  
+           ret
+
+           ENDMOD
+           END

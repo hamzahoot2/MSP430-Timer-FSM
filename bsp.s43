@@ -1,0 +1,38 @@
+#include "bsp.h"
+
+           MODULE BSP
+           PUBLIC Init_GPIO
+           EXTERN main, P2_ISR, TA0_ISR, TA1_ISR
+           RSEG   CODE                    
+
+Init_GPIO:
+           mov.w  #WDTPW+WDTHOLD, &WDTCTL    ; Halt Watchdog
+           
+           ; LCD Port (P1)
+           mov.b  #0x00, LCD_SEL             ; P1 GPIO
+           bis.b  #0xFF, LCD_DIR             ; P1 Output
+           
+           ; Pushbuttons & Control (P2)
+           mov.b  #0x00, PB_SEL              ; P2 GPIO
+           bis.b  #0xE0, PB_DIR              ; P2.7-P2.5 LCD Control
+           bic.b  #PB0+PB1+PB2, PB_DIR       ; P2.0, P2.1, P2.3 Input
+           bis.b  #PB0+PB1+PB2, PB_IES       ; High-to-low edge
+           bis.b  #PB0+PB1+PB2, PB_IE        ; Enable interrupts
+           bic.b  #PB0+PB1+PB2, PB_IFG       ; Clear flags
+           
+           ; P2.4 for Timer1_A Capture (State 2)
+           bis.b  #0x10, PB_DIR              ; P2.4 Input
+           bis.b  #0x10, PB_SEL              ; P2.4 TA1.2 option
+           ret
+
+           COMMON INTVEC
+           ORG    RESET_VECTOR
+           DW     main
+           ORG    PORT2_VECTOR
+           DW     P2_ISR
+           ORG    TIMER0_A1_VECTOR
+           DW     TA0_ISR
+           ORG    TIMER1_A1_VECTOR
+           DW     TA1_ISR
+           ENDMOD
+           END

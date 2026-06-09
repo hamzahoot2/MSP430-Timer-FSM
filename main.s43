@@ -1,0 +1,66 @@
+#include "bsp.h"
+
+           NAME   Main
+           PUBLIC main, state, lcd_col, lcd_row
+           EXTERN lcd_init, lcd_clr, SysConfig, print_str
+		   
+           ORG    0x0200          
+state      DW     0
+lcd_col    DB     0
+lcd_row    DB     0
+
+           RSEG   CSTACK
+           RSEG   CODE
+
+main:      mov    #0x0400, SP
+           mov    #WDTPW+WDTHOLD, &WDTCTL
+           call   #SysConfig
+           call   #lcd_init
+           
+FSM_Loop:  
+           cmp    #1, state
+           jz     State1_Countdown
+           cmp    #2, state
+           jz     State2_Measure
+           cmp    #3, state
+           jz     State3_PWM
+           
+           bis    #LPM0+GIE, SR        ; Sleep mode 0 until interrupt
+           jmp    FSM_Loop
+
+State1_Countdown:
+           call   #lcd_clr
+           mov.w  #TASSEL_2 + MC_1 + ID_3, &TA0CTL ; SMCLK/8, Up mode
+           mov.w  #37500, &TA0CCR0     ; 1 sec intervals (assuming 1MHz)
+           bis.w  #CCIE, &TA0CCTL0
+
+S1_Wait:   bis    #LPM0+GIE, SR        ; Wait for TA0_ISR to wake CPU
+           cmp    #0, state            ; Check if user pressed PB to exit
+           jnz    FSM_Loop
+           ; --- Call API to update LCD numbers here ---
+           jmp    S1_Wait
+
+State2_Measure:
+           call   #lcd_clr
+           ; Init TA1 for Input Capture on P2.4 (CCI1A)
+           mov.w  #CM_1 + CCIS_0 + SCS + CAP + CCIE, &TA1CCTL2
+           mov.w  #TASSEL_2 + MC_2 + TACLR, &TA1CTL ; SMCLK, Cont mode
+           
+S2_Wait:   bis    #LPM0+GIE, SR        ; Wait for TA1 capture interrupt
+           cmp    #0, state
+           jnz    FSM_Loop
+           ; --- Calculate Frequency and Display here ---
+           ; f = 1,000,000 / (Capture_2 - Capture_1)
+           jmp    S2_Wait
+
+State3_PWM:
+           mov.w  #TASSEL_2 + MC_0, &TA0CTL ; Halt TA0
+           call   #lcd_clr
+           mov.w  #1082, &TA1CCR0
+           mov.w  #OUTMOD_7, &TA1CCTL1
+           mov.w  #541, &TA1CCR1
+           mov.w  #TASSEL_2 + MC_1, &TA1CTL ; SMCLK, Up mode
+           mov    #0, state
+           jmp    FSM_Loop
+
+           END

@@ -1,0 +1,74 @@
+#include "bsp.h"
+
+           MODULE HAL
+           PUBLIC lcd_init, lcd_trig, P2_ISR, TA0_ISR, TA1_ISR, SysConfig
+           EXTERN state, delay
+
+           RSEG   CODE
+
+SysConfig: call   #Init_GPIO
+           ret
+
+Debounce   MACRO  cycle
+           LOCAL  L1
+           mov    cycle, R11
+L1         dec    R11
+           jnz    L1
+           ENDM
+
+P2_ISR:    
+           bit.b  #PB0, PB_IFG
+           jnz    P0_Pressed
+           bit.b  #PB1, PB_IFG
+           jnz    P1_Pressed
+           bit.b  #PB2, PB_IFG
+           jnz    P2_Pressed
+           reti          
+
+P0_Pressed:
+           mov.w  #1, state           
+           Debounce #245                
+           jmp    Exit_LPM
+P1_Pressed:
+           mov.w  #2, state		
+           Debounce #245
+           jmp    Exit_LPM
+P2_Pressed:
+           mov.w  #3, state
+           Debounce #245
+
+Exit_LPM:  bic    #CPUOFF, 0(SP)       ; Wake CPU
+           bic.b  #PB0+PB1+PB2, PB_IFG ; Clear flags
+           reti
+
+TA0_ISR:   
+           mov.w  &TA0IV, R15          ; Read correct TA0 Vector
+           bic    #CPUOFF, 0(SP)       ; Wake CPU for main loop updates
+           reti                        
+
+TA1_ISR:
+           mov.w  &TA1IV, R15          ; Read correct TA1 Vector
+           ; Input Capture logic triggers here
+           bic    #CPUOFF, 0(SP)
+           reti
+
+lcd_trig:  bis.b  #ENctrl, PB_OUT      
+           nop
+           nop
+           bic.b  #ENctrl, PB_OUT      
+           ret
+
+lcd_init:  bic.b  #RWctrl+RSctrl+ENctrl, PB_OUT
+           push   #del15ms
+           call   #delay
+           mov.b  #0x3F, LCD_OUT
+           call   #lcd_trig
+           push   #del5ms
+           call   #delay
+           mov.b  #0x0F, LCD_OUT
+           call   #lcd_trig
+           ; Add remaining initialization sequence here
+           ret      
+
+           ENDMOD
+           END
