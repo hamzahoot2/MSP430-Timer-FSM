@@ -30,5 +30,6 @@ The system operates based on a 4-state FSM triggered by external hardware interr
 3.  **API:** Provides high-level application interfaces for the LCD (string/character printing, display clearing) and manages software-based delays to prevent hardware timer collisions.
 4.  **Main:** Contains the primary FSM polling loop, evaluating the `state` variable and routing execution to the corresponding operational logic.
 
-## Author
-hamzahoot2
+## Authors
+Hamza Alhote
+Malek Mahajna
