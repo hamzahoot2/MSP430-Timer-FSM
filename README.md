@@ -32,4 +32,5 @@ The system operates based on a 4-state FSM triggered by external hardware interr
 
 ## Authors
 Hamza Alhote
+
 Malek Mahajna
